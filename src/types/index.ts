@@ -35,6 +35,7 @@ export interface ReviewRecord {
 }
 
 export interface UserSettings {
+  key: string;
   theme: Theme;
   fontSize: number;
   contentWidth: number;
