@@ -3,7 +3,7 @@ import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import type { CodeProps } from 'react-syntax-highlighter/dist/esm/types';
+import type { CodeProps } from 'react-syntax-highlighter/dist/types';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import type { FileEntity } from '../../types';
 import 'katex/dist/katex.min.css';
