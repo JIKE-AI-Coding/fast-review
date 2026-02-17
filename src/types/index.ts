@@ -4,7 +4,7 @@ export const REVIEW_INTERVALS = [5, 30, 720, 1440, 2880, 5760, 10080, 21600] as 
 export type ReviewResult = 'remembered' | 'forgotten';
 export type Theme = 'light' | 'dark';
 
-export interface File {
+export interface FileEntity {
   id: string;
   path: string;
   name: string;

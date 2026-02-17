@@ -1,6 +1,9 @@
-import type { File } from '../types';
+import type { FileEntity } from '../types';
 import db from '../db';
 
+/**
+ * 生成文件ID（路径的哈希值）
+ */
 export function generateFileId(path: string): string {
   let hash = 0;
   for (let i = 0; i < path.length; i++) {
@@ -11,8 +14,11 @@ export function generateFileId(path: string): string {
   return `file_${Math.abs(hash)}`;
 }
 
-export async function scanDirectory(directoryHandle: FileSystemDirectoryHandle): Promise<File[]> {
-  const files: File[] = [];
+/**
+ * 扫描目录中的所有markdown文件
+ */
+export async function scanDirectory(directoryHandle: FileSystemDirectoryHandle): Promise<FileEntity[]> {
+  const files: FileEntity[] = [];
 
   async function scan(dir: FileSystemDirectoryHandle, basePath = '') {
     for await (const entry of dir as any) {
@@ -78,8 +84,29 @@ export async function saveFilesToDatabase(files: File[]): Promise<void> {
   });
 }
 
-export async function getAllFiles(): Promise<File[]> {
+export async function getAllFiles(): Promise<FileEntity[]> {
   return await db.files.toArray();
+}
+
+/**
+ * 根据ID获取文件
+ */
+export async function getFileById(id: string): Promise<FileEntity | undefined> {
+  return await db.files.get(id);
+}
+
+/**
+ * 搜索文件
+ */
+export async function searchFiles(query: string): Promise<FileEntity[]> {
+  const files = await db.files.toArray();
+  const lowerQuery = query.toLowerCase();
+
+  return files.filter(file =>
+    file.name.toLowerCase().includes(lowerQuery) ||
+    file.content.toLowerCase().includes(lowerQuery) ||
+    file.path.toLowerCase().includes(lowerQuery)
+  );
 }
 
 export async function getFileById(id: string): Promise<File | undefined> {

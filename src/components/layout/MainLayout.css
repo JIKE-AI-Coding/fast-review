@@ -1,0 +1,11 @@
+.main-layout {
+  min-height: 100vh;
+}
+
+.sidebar {
+  padding: 16px;
+}
+
+.content-area {
+  height: 100%;
+}

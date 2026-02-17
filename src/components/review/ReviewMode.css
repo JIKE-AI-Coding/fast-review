@@ -1,0 +1,18 @@
+.review-mode {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.review-actions {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding: 24px;
+  background: white;
+  border-top: 1px solid #e8e8e8;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}

@@ -1,0 +1,25 @@
+.home-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.welcome-card {
+  text-align: center;
+  padding: 48px 24px;
+}
+
+.welcome-card h1 {
+  margin-bottom: 16px;
+  font-size: 32px;
+  color: #1890ff;
+}
+
+.welcome-card p {
+  margin-bottom: 32px;
+  font-size: 16px;
+  color: #666;
+}
+
+.stats {
+  margin-top: 24px;
+}
