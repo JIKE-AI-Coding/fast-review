@@ -3,6 +3,7 @@ import { Layout, Card, Button, Empty } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTodayReviewTasks } from '../hooks/useReview';
+import type { ReviewTask } from '../types';
 import ReviewMode from '../components/review/ReviewMode';
 
 const { Content } = Layout;

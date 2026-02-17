@@ -5,10 +5,12 @@ import { useNavigate } from 'react-router-dom';
 import { useTodayReviewTasks } from '../hooks/useReview';
 import { useFiles } from '../hooks/useFiles';
 import { useNotes } from '../hooks/useNotes';
+import type { ReviewTask } from '../types';
 import ReviewTaskCard from '../components/review/ReviewTaskCard';
 import StatsOverview from '../components/stats/StatsOverview';
 import NoteEditor from '../components/notes/NoteEditor';
 import { createNote } from '../services/noteService';
+import type { Note } from '../types';
 import './Home.css';
 
 const { Content } = Layout;

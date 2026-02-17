@@ -5,6 +5,7 @@ import { useFile } from '../../hooks/useFiles';
 import { submitReview } from '../../services/reviewService';
 import MarkdownReader from '../reader/MarkdownReader';
 import ReaderToolbar from '../reader/ReaderToolbar';
+import type { FileEntity } from '../../types';
 import './ReviewMode.css';
 
 const { Content } = Layout;

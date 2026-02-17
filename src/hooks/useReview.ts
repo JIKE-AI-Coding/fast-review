@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { getTodayReviewTasks, getMemoryRetentionRate } from '../services/reviewService';
 import type { ReviewTask } from '../types';
+import { getTodayReviewTasks, getMemoryRetentionRate } from '../services/reviewService';
+import db from '../db';
 
 export function useTodayReviewTasks() {
   const [tasks, setTasks] = useState<ReviewTask[]>([]);

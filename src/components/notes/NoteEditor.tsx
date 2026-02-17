@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Modal, Input, Button } from 'antd';
+import { Modal, Input } from 'antd';
 
 const { TextArea } = Input;
 
@@ -59,7 +59,7 @@ export default function NoteEditor({
       <TextArea
         rows={6}
         value={content}
-        onChange={(e) => setContent(e.target.value)}
+        onChange={(e) => setContent((e.target as HTMLTextAreaElement).value)}
         placeholder="输入笔记内容..."
         autoFocus
       />

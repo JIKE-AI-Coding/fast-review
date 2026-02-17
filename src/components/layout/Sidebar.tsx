@@ -21,8 +21,8 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
       const parts = file.path.split('/');
       let currentPath = '';
 
-      parts.forEach((part, index) => {
-        const isLast = index === parts.length - 1;
+      parts.forEach((part: any) => {
+        const isLast = parts.indexOf(part) === parts.length - 1;
         currentPath = currentPath ? `${currentPath}/${part}` : part;
 
         if (!treeMap.has(currentPath)) {
@@ -58,7 +58,7 @@ export default function Sidebar({ collapsed }: { collapsed: boolean }) {
     return rootNodes;
   };
 
-  const handleSelect = (selectedKeys: React.Key[], info: any) => {
+  const handleSelect = (_selectedKeys: React.Key[], info: any) => {
     if (info.node.isLeaf) {
       navigate(`/reader/${info.node.key.replace('file_', '')}`);
     }

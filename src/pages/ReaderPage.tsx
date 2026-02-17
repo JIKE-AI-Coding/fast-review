@@ -9,6 +9,7 @@ import ReaderToolbar from '../components/reader/ReaderToolbar';
 import NoteEditor from '../components/notes/NoteEditor';
 import NoteList from '../components/notes/NoteList';
 import { createNote, updateNote, deleteNote } from '../services/noteService';
+import type { Note } from '../types';
 
 const { Content } = Layout;
 
