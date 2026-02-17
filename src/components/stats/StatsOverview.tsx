@@ -1,5 +1,5 @@
 import { Card, Row, Col, Statistic } from 'antd';
-import { FileTextOutlined, TrophyOutlined, BookOutlined } from '@ant-design/icons';
+import { FileTextOutlined, TrophyOutlined } from '@ant-design/icons';
 import { useMemoryStats } from '../../hooks/useReview';
 import { useFiles } from '../../hooks/useFiles';
 
@@ -24,7 +24,7 @@ export default function StatsOverview() {
             <Statistic
               title="总复习次数"
               value={totalReviews || 0}
-              prefix={<BookOutlined />}
+              prefix={<TrophyOutlined />}
             />
           </Card>
         </Col>
@@ -44,7 +44,7 @@ export default function StatsOverview() {
             <Statistic
               title="学习文件"
               value={files?.filter(f => f.reviewLevel > 0).length || 0}
-              prefix={<ClockOutlined />}
+              prefix={<FileTextOutlined />}
             />
           </Card>
         </Col>

@@ -65,6 +65,3 @@ export default function NoteEditor({
     </Modal>
   );
 }
-
-// Suppress unused variable warning for fileId - it's passed by parent but not used here
-export {};

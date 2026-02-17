@@ -56,7 +56,6 @@ export async function submitReview(
  * 获取今天的复习任务
  */
 export async function getTodayReviewTasks(): Promise<ReviewTask[]> {
-  const now = Date.now();
   const startOfDay = new Date();
   startOfDay.setHours(0, 0, 0, 0);
   const endOfDay = new Date();
