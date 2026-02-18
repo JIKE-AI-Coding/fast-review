@@ -13,6 +13,14 @@ interface MarkdownReaderProps {
 }
 
 export default function MarkdownReader({ file }: MarkdownReaderProps) {
+  const generateHeadingId = (text: string): string => {
+    return text
+      .toLowerCase()
+      .replace(/\s+/g, '-')
+      .replace(/[^\w\-]/g, '')
+      .replace(/--+/g, '-');
+  };
+
   return (
     <div className="markdown-reader">
       <ReactMarkdown
@@ -35,6 +43,36 @@ export default function MarkdownReader({ file }: MarkdownReaderProps) {
                 {children}
               </code>
             );
+          },
+          h1({ children, ...props }: any) {
+            const text = children?.[0] || '';
+            const id = generateHeadingId(text);
+            return <h1 id={id} {...props}>{children}</h1>;
+          },
+          h2({ children, ...props }: any) {
+            const text = children?.[0] || '';
+            const id = generateHeadingId(text);
+            return <h2 id={id} {...props}>{children}</h2>;
+          },
+          h3({ children, ...props }: any) {
+            const text = children?.[0] || '';
+            const id = generateHeadingId(text);
+            return <h3 id={id} {...props}>{children}</h3>;
+          },
+          h4({ children, ...props }: any) {
+            const text = children?.[0] || '';
+            const id = generateHeadingId(text);
+            return <h4 id={id} {...props}>{children}</h4>;
+          },
+          h5({ children, ...props }: any) {
+            const text = children?.[0] || '';
+            const id = generateHeadingId(text);
+            return <h5 id={id} {...props}>{children}</h5>;
+          },
+          h6({ children, ...props }: any) {
+            const text = children?.[0] || '';
+            const id = generateHeadingId(text);
+            return <h6 id={id} {...props}>{children}</h6>;
           },
         }}
       >

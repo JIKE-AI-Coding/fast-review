@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Layout, Button, message } from 'antd';
+import { Layout, Button, message, Layout as AntLayout, Tree, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFile, useFiles } from '../hooks/useFiles';
@@ -11,7 +11,8 @@ import NoteList from '../components/notes/NoteList';
 import { createNote, updateNote, deleteNote } from '../services/noteService';
 import type { Note } from '../types';
 
-const { Content } = Layout;
+const { Content, Sider } = AntLayout;
+const { Text } = Typography;
 
 export default function ReaderPage() {
   const { fileId } = useParams<{ fileId: string }>();
@@ -23,6 +24,74 @@ export default function ReaderPage() {
 
   const file = fileId ? useFile(fileId) : null;
   const notes = fileId ? [] : [];
+
+  const parseMarkdownHeadings = (content: string): Array<{ level: number; text: string; id: string }> => {
+    const headings: Array<{ level: number; text: string; id: string }> = [];
+    if (!content) return headings;
+
+    const lines = content.split('\n');
+    const headingRegex = /^(#{1,6})\s+(.+)$/;
+
+    lines.forEach((line) => {
+      const match = line.match(headingRegex);
+      if (match) {
+        const level = match[1].length;
+        const text = match[2].trim();
+        const id = text.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+        headings.push({ level, text, id });
+      }
+    });
+
+    return headings;
+  };
+
+  const buildHeadingTree = (headings: Array<{ level: number; text: string; id: string }>): any[] => {
+    if (headings.length === 0) return [];
+
+    const tree: any[] = [];
+    const stack: any[] = [{ children: tree, level: 0 }];
+
+    headings.forEach((heading, index) => {
+      const node = {
+        key: `heading-${index}`,
+        title: heading.text,
+        isLeaf: false,
+        children: [],
+        style: { fontWeight: heading.level <= 2 ? '600' : '400' },
+      };
+
+      while (stack.length > 1 && stack[stack.length - 1].level >= heading.level) {
+        stack.pop();
+      }
+
+      const parent = stack[stack.length - 1];
+      if (!parent.children) {
+        parent.children = [];
+      }
+      parent.children.push(node);
+
+      if (heading.level < 6) {
+        stack.push({ children: node.children, level: heading.level });
+      }
+    });
+
+    const markLeaves = (nodes: any[]): any[] => {
+      return nodes.map(node => ({
+        ...node,
+        isLeaf: !node.children || node.children.length === 0,
+        children: node.children && node.children.length > 0 ? markLeaves(node.children) : undefined,
+      }));
+    };
+
+    return markLeaves(tree);
+  };
+
+  const handleHeadingClick = (headingId: string) => {
+    const element = document.getElementById(headingId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   const handleBack = () => {
     navigate('/');
@@ -82,9 +151,34 @@ export default function ReaderPage() {
 
   const fileIndex = files?.findIndex(f => f.id === file.id) ?? -1;
 
+  const headings = file?.content ? parseMarkdownHeadings(file.content) : [];
+  const headingTree = buildHeadingTree(headings);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
-      <Content>
+      {headingTree.length > 0 && (
+        <Sider width={280} theme="light" style={{ overflow: 'auto', height: '100vh', position: 'fixed', right: 0, top: 0, paddingTop: '60px' }}>
+          <div style={{ padding: '16px' }}>
+            <h3 style={{ marginBottom: '16px', fontSize: '16px' }}>目录</h3>
+            <Tree
+              showLine
+              treeData={headingTree}
+              onSelect={(_, info: any) => {
+                if (info.node) {
+                  const headings = parseMarkdownHeadings(file?.content || '');
+                  const index = parseInt(info.node.key.replace('heading-', ''));
+                  if (headings[index]) {
+                    handleHeadingClick(headings[index].id);
+                  }
+                }
+              }}
+              defaultExpandAll
+              style={{ fontSize: '13px' }}
+            />
+          </div>
+        </Sider>
+      )}
+      <Content style={{ marginRight: headingTree.length > 0 ? '280px' : '0' }}>
         <ReaderToolbar
           file={file}
           fontSize={fontSize}

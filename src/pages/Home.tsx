@@ -1,28 +1,52 @@
-import { useState } from 'react';
-import { Layout, Button, Card, List, Modal, message } from 'antd';
-import { FolderOpenOutlined, ThunderboltOutlined, EditOutlined } from '@ant-design/icons';
+import { useState, useMemo } from 'react';
+import { Layout, Button, Card, List, message, Modal, Popconfirm } from 'antd';
+import { FolderOpenOutlined, ThunderboltOutlined, DeleteOutlined, FolderOutlined, PlusOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTodayReviewTasks } from '../hooks/useReview';
 import { useFiles } from '../hooks/useFiles';
-import { useNotes } from '../hooks/useNotes';
-import type { ReviewTask } from '../types';
 import ReviewTaskCard from '../components/review/ReviewTaskCard';
 import StatsOverview from '../components/stats/StatsOverview';
-import NoteEditor from '../components/notes/NoteEditor';
-import { createNote } from '../services/noteService';
-import type { Note } from '../types';
+import { deleteFiles } from '../services/fileService';
 import './Home.css';
 
 const { Content } = Layout;
 
+interface Directory {
+  path: string;
+  name: string;
+  fileCount: number;
+}
+
 export default function Home() {
   const navigate = useNavigate();
   const [loadingDirectory, setLoadingDirectory] = useState(false);
-  const [noteModalVisible, setNoteModalVisible] = useState(false);
-  const [selectedFileId, setSelectedFileId] = useState<string>();
   const { tasks, loading: loadingTasks } = useTodayReviewTasks();
   const { files } = useFiles();
-  const notes = useNotes();
+
+  const directories = useMemo((): Directory[] => {
+    if (!files || files.length === 0) return [];
+
+    const dirMap = new Map<string, { name: string; count: number }>();
+
+    files.forEach(file => {
+      const parts = file.path.split('/');
+      if (parts.length > 0) {
+        const rootDir = parts[0];
+        const existing = dirMap.get(rootDir);
+        if (existing) {
+          existing.count++;
+        } else {
+          dirMap.set(rootDir, { name: rootDir, count: 1 });
+        }
+      }
+    });
+
+    return Array.from(dirMap.entries()).map(([path, data]) => ({
+      path,
+      name: data.name,
+      fileCount: data.count,
+    }));
+  }, [files]);
 
   const handleLoadDirectory = async () => {
     try {
@@ -33,42 +57,101 @@ export default function Home() {
       input.webkitdirectory = true;
 
       input.onchange = async (e) => {
-        const filesInput = (e.target as HTMLInputElement).files;
-        if (filesInput) {
-          // 注意：这里需要使用File System Access API或模拟
-          // 为了简化，我们先提示用户
-          message.info('正在加载目录...');
+        try {
+          const filesInput = (e.target as HTMLInputElement).files;
+          if (!filesInput || filesInput.length === 0) return;
+
+          message.info(`开始加载 ${filesInput.length} 个文件...`);
+
+          const filePromises: Array<Promise<{ name: string; content: string; path: string; size: number }>> = [];
+
+          for (let i = 0; i < filesInput.length; i++) {
+            const file = filesInput[i];
+            if (!file.name.endsWith('.md')) continue;
+
+            const filePromise = new Promise<{ name: string; content: string; path: string; size: number }>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => {
+                resolve({
+                  name: file.name,
+                  content: reader.result as string,
+                  path: file.webkitRelativePath,
+                  size: file.size
+                });
+              };
+              reader.onerror = () => {
+                reject(new Error(`无法读取文件: ${file.name}`));
+              };
+              reader.readAsText(file);
+            });
+
+            filePromises.push(filePromise);
+          }
+
+          const scanResults = await Promise.all(filePromises);
+
+          if (scanResults.length === 0) {
+            message.warning('未找到markdown文件');
+            setLoadingDirectory(false);
+            return;
+          }
+
+          message.success(`成功加载 ${scanResults.length} 个markdown文件`);
+
+          const fileService = await import('../services/fileService');
+          const now = Date.now();
+
+          await fileService.saveFilesToDatabase(scanResults.map(f => ({
+            id: fileService.generateFileId(f.path),
+            path: f.path,
+            name: f.name,
+            content: f.content,
+            size: f.size,
+            modifiedAt: now,
+            createdAt: now,
+            reviewLevel: 0,
+            lastReviewedAt: 0,
+            nextReviewAt: 0,
+            readingProgress: 0,
+          })));
+
+          setLoadingDirectory(false);
+        } catch (error) {
+          console.error('Failed to load directory:', error);
+          message.error('加载目录失败');
           setLoadingDirectory(false);
         }
       };
 
       input.click();
     } catch (error) {
-      console.error('Failed to load directory:', error);
-      message.error('加载目录失败');
+      console.error('Failed to setup directory input:', error);
+      message.error('无法创建目录选择器');
       setLoadingDirectory(false);
     }
   };
 
-  const handleAddNote = (fileId: string) => {
-    setSelectedFileId(fileId);
-    setNoteModalVisible(true);
-  };
+  const handleDeleteDirectory = async (directoryPath: string) => {
+    if (!files || files.length === 0) return;
 
-  const handleSaveNote = async (content: string) => {
-    if (!selectedFileId) return;
+    const filesInDirectory = files.filter(f => f.path.startsWith(directoryPath + '/') || f.path === directoryPath);
+
+    if (filesInDirectory.length === 0) {
+      message.info('该目录下没有文件');
+      return;
+    }
 
     try {
-      await createNote(selectedFileId, content);
-      message.success('笔记添加成功');
-      setNoteModalVisible(false);
+      await deleteFiles(filesInDirectory.map(f => f.id));
+      message.success(`已删除 ${filesInDirectory.length} 个文件`);
     } catch (error) {
-      message.error('添加笔记失败');
+      message.error('删除失败');
     }
   };
 
-  const pendingCount = tasks.filter(t => !t.overdue).length;
-  const overdueCount = tasks.filter(t => t.overdue).length;
+  const handleOpenDirectory = (dirPath: string) => {
+    navigate(`/directory/${encodeURIComponent(dirPath)}`);
+  };
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -128,27 +211,41 @@ export default function Home() {
               </Card>
 
               <Card
-                title="最近学习"
-                extra={<Button onClick={() => navigate('/files')}>查看全部</Button>}
+                title="我的文件"
+                extra={
+                  <Button
+                    type="primary"
+                    icon={<PlusOutlined />}
+                    onClick={handleLoadDirectory}
+                    loading={loadingDirectory}
+                  >
+                    导入目录
+                  </Button>
+                }
                 style={{ marginTop: 24 }}
               >
                 <List
-                  dataSource={files?.slice(0, 5)}
-                  renderItem={(file) => (
+                  dataSource={directories}
+                  renderItem={(dir) => (
                     <List.Item
                       actions={[
-                        <Button
-                          type="link"
-                          icon={<EditOutlined />}
-                          onClick={() => handleAddNote(file.id)}
+                        <Popconfirm
+                          key="delete"
+                          title="确定删除该目录及所有文件？"
+                          onConfirm={() => handleDeleteDirectory(dir.path)}
+                          okText="确定"
+                          cancelText="取消"
                         >
-                          添加笔记
-                        </Button>,
+                          <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+                        </Popconfirm>,
                       ]}
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleOpenDirectory(dir.path)}
                     >
                       <List.Item.Meta
-                        title={file.name}
-                        description={file.path}
+                        avatar={<FolderOutlined style={{ fontSize: 24, color: '#faad14' }} />}
+                        title={dir.name}
+                        description={`${dir.fileCount} 个文件`}
                       />
                     </List.Item>
                   )}
@@ -157,13 +254,6 @@ export default function Home() {
             </>
           )}
         </div>
-
-        <NoteEditor
-          visible={noteModalVisible}
-          fileId={selectedFileId}
-          onSave={handleSaveNote}
-          onCancel={() => setNoteModalVisible(false)}
-        />
       </Content>
     </Layout>
   );
