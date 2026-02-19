@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { Layout, Tree, Button, Empty, TreeProps, Select } from 'antd';
-import { ArrowLeftOutlined, FileOutlined, FolderOutlined, SortAscendingOutlined, VerticalAlignTopOutlined } from '@ant-design/icons';
+import { Layout, Tree, Button, Empty, TreeProps, Select, Drawer } from 'antd';
+import { ArrowLeftOutlined, FileOutlined, FolderOutlined, SortAscendingOutlined, VerticalAlignTopOutlined, UnorderedListOutlined, OrderedListOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFiles } from '../hooks/useFiles';
 import MarkdownReader from '../components/reader/MarkdownReader';
@@ -17,6 +17,8 @@ const sortOptions = [
   { value: 'size', label: '按大小' },
 ];
 
+const MOBILE_BREAKPOINT = 768;
+
 export default function DirectoryBrowser() {
   const { dirPath } = useParams<{ dirPath: string }>();
   const navigate = useNavigate();
@@ -25,9 +27,21 @@ export default function DirectoryBrowser() {
   const [expandedKeys, setExpandedKeys] = useState<Key[]>([]);
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [showBackTop, setShowBackTop] = useState(false);
+  const [leftDrawerVisible, setLeftDrawerVisible] = useState(false);
+  const [rightDrawerVisible, setRightDrawerVisible] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const decodedDirPath = dirPath ? decodeURIComponent(dirPath) : '';
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < MOBILE_BREAKPOINT);
+    };
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   const directoryFiles = useMemo(() => {
     if (!files || !decodedDirPath) return [];
@@ -183,6 +197,9 @@ export default function DirectoryBrowser() {
   const handleFileSelect: TreeProps['onSelect'] = (selectedKeys, info) => {
     if (info.node.isLeaf) {
       setSelectedFileId(selectedKeys[0] as string);
+      if (isMobile) {
+        setLeftDrawerVisible(false);
+      }
     }
   };
 
@@ -191,16 +208,18 @@ export default function DirectoryBrowser() {
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
+    if (isMobile) {
+      setRightDrawerVisible(false);
+    }
   };
 
   const handleBack = () => {
     navigate('/');
   };
 
-  const handleScroll = () => {
-    if (contentRef.current) {
-      setShowBackTop(contentRef.current.scrollTop > 200);
-    }
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    setShowBackTop(target.scrollTop > 200);
   };
 
   const handleBackTop = () => {
@@ -208,14 +227,6 @@ export default function DirectoryBrowser() {
       contentRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
   };
-
-  useEffect(() => {
-    const content = contentRef.current;
-    if (content) {
-      content.addEventListener('scroll', handleScroll);
-      return () => content.removeEventListener('scroll', handleScroll);
-    }
-  }, []);
 
   useEffect(() => {
     if (contentRef.current) {
@@ -227,6 +238,63 @@ export default function DirectoryBrowser() {
   const headings = selectedFile?.content ? parseMarkdownHeadings(selectedFile.content) : [];
   const headingTree = buildHeadingTree(headings);
   const directoryTree = useMemo(() => buildDirectoryTree(), [directoryFiles, sortBy]);
+
+  const renderDirectoryTree = () => (
+    <>
+      <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleBack} />
+        <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+          {decodedDirPath.split('/').pop() || '根目录'}
+        </span>
+      </div>
+      <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <SortAscendingOutlined style={{ color: '#666' }} />
+        <Select
+          value={sortBy}
+          onChange={setSortBy}
+          options={sortOptions}
+          style={{ flex: 1 }}
+          size="small"
+        />
+      </div>
+      <div style={{ padding: '12px' }}>
+        <Tree
+          showLine
+          showIcon
+          treeData={directoryTree}
+          onSelect={handleFileSelect}
+          expandedKeys={expandedKeys}
+          onExpand={setExpandedKeys}
+          selectedKeys={selectedFileId ? [selectedFileId] : []}
+          defaultExpandAll
+        />
+      </div>
+    </>
+  );
+
+  const renderHeadingTree = () => (
+    <>
+      <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
+        <h3 style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>目录</h3>
+      </div>
+      <div style={{ padding: '12px' }}>
+        <Tree
+          treeData={headingTree}
+          onSelect={(_, info) => {
+            if (info.node) {
+              const key = info.node.key as string;
+              const index = parseInt(key.replace('heading-', ''));
+              if (headings[index]) {
+                handleHeadingClick(headings[index].id);
+              }
+            }
+          }}
+          defaultExpandAll
+          style={{ fontSize: 13 }}
+        />
+      </div>
+    </>
+  );
 
   if (!directoryFiles || directoryFiles.length === 0) {
     return (
@@ -241,6 +309,75 @@ export default function DirectoryBrowser() {
     );
   }
 
+  if (isMobile) {
+    return (
+      <Layout style={{ height: '100vh' }}>
+        <Content style={{ height: '100vh', position: 'relative' }}>
+          <div
+            ref={contentRef}
+            onScroll={handleScroll}
+            style={{ padding: '16px', overflow: 'auto', height: '100%', paddingBottom: 70 }}
+          >
+            {selectedFile ? (
+              <div>
+                <h2 style={{ marginBottom: 24 }}>{selectedFile.name}</h2>
+                <MarkdownReader file={selectedFile} />
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                <Empty description="请选择一个文件查看" />
+              </div>
+            )}
+          </div>
+
+          <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-around', padding: '12px 0' }}>
+            <Button icon={<UnorderedListOutlined />} onClick={() => setLeftDrawerVisible(true)}>
+              文件
+            </Button>
+            {selectedFile && headingTree.length > 0 && (
+              <Button icon={<OrderedListOutlined />} onClick={() => setRightDrawerVisible(true)}>
+                目录
+              </Button>
+            )}
+          </div>
+
+          {showBackTop && (
+            <Button
+              type="primary"
+              shape="circle"
+              size="large"
+              icon={<VerticalAlignTopOutlined />}
+              onClick={handleBackTop}
+              style={{ position: 'fixed', bottom: 80, right: 16, zIndex: 1000 }}
+            />
+          )}
+        </Content>
+
+        <Drawer
+          title="文件列表"
+          placement="left"
+          open={leftDrawerVisible}
+          onClose={() => setLeftDrawerVisible(false)}
+          width={280}
+          styles={{ body: { padding: 0 } }}
+        >
+          {renderDirectoryTree()}
+        </Drawer>
+
+        <Drawer
+          title="文件目录"
+          placement="right"
+          open={rightDrawerVisible}
+          onClose={() => setRightDrawerVisible(false)}
+          width={280}
+          styles={{ body: { padding: 0 } }}
+        >
+          {renderHeadingTree()}
+        </Drawer>
+      </Layout>
+    );
+  }
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
@@ -248,40 +385,14 @@ export default function DirectoryBrowser() {
         theme="light"
         style={{ overflow: 'auto', height: '100vh', position: 'fixed', left: 0, top: 0, borderRight: '1px solid #f0f0f0' }}
       >
-        <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <Button type="text" icon={<ArrowLeftOutlined />} onClick={handleBack} />
-          <span style={{ fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
-            {decodedDirPath.split('/').pop() || '根目录'}
-          </span>
-        </div>
-        <div style={{ padding: '8px 12px', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <SortAscendingOutlined style={{ color: '#666' }} />
-          <Select
-            value={sortBy}
-            onChange={setSortBy}
-            options={sortOptions}
-            style={{ flex: 1 }}
-            size="small"
-          />
-        </div>
-        <div style={{ padding: '12px' }}>
-          <Tree
-            showLine
-            showIcon
-            treeData={directoryTree}
-            onSelect={handleFileSelect}
-            expandedKeys={expandedKeys}
-            onExpand={setExpandedKeys}
-            selectedKeys={selectedFileId ? [selectedFileId] : []}
-            defaultExpandAll
-          />
-        </div>
+        {renderDirectoryTree()}
       </Sider>
 
       <Layout style={{ marginLeft: 260, marginRight: headingTree.length > 0 ? 280 : 0 }}>
         <Content style={{ height: '100vh', position: 'relative' }}>
           <div
             ref={contentRef}
+            onScroll={handleScroll}
             style={{ padding: '24px', overflow: 'auto', height: '100%' }}
           >
             {selectedFile ? (
@@ -314,25 +425,7 @@ export default function DirectoryBrowser() {
           theme="light"
           style={{ overflow: 'auto', height: '100vh', position: 'fixed', right: 0, top: 0, borderLeft: '1px solid #f0f0f0' }}
         >
-          <div style={{ padding: '16px', borderBottom: '1px solid #f0f0f0' }}>
-            <h3 style={{ margin: 0, fontSize: 14, fontWeight: 500 }}>目录</h3>
-          </div>
-          <div style={{ padding: '12px' }}>
-            <Tree
-              treeData={headingTree}
-              onSelect={(_, info) => {
-                if (info.node) {
-                  const key = info.node.key as string;
-                  const index = parseInt(key.replace('heading-', ''));
-                  if (headings[index]) {
-                    handleHeadingClick(headings[index].id);
-                  }
-                }
-              }}
-              defaultExpandAll
-              style={{ fontSize: 13 }}
-            />
-          </div>
+          {renderHeadingTree()}
         </Sider>
       )}
     </Layout>

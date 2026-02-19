@@ -46,6 +46,42 @@ npm run build
 npm test
 ```
 
+## Docker 部署
+
+### 开发环境使用 Docker
+
+1. **使用 Docker Compose 启动开发环境**
+
+```bash
+docker-compose up --build
+```
+
+2. **后台运行**
+
+```bash
+docker-compose up -d --build
+```
+
+3. **停止服务**
+
+```bash
+docker-compose down
+```
+
+4. **查看日志**
+
+```bash
+docker-compose logs -f
+```
+
+### Docker 配置说明
+
+- `Dockerfile`: 基于 Node.js 18 Alpine 的开发环境配置
+- `docker-compose.yml`: 开发环境编排配置，包含卷挂载支持热重载
+- `.dockerignore`: 优化构建上下文，排除不必要文件
+
+应用将在 http://localhost:5173 上运行。
+
 ## 使用说明
 
 1. 点击"加载学习目录"按钮，选择包含markdown文件的文件夹
