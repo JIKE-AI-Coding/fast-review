@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Layout, Button, message, Layout as AntLayout, Tree, Typography } from 'antd';
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFile, useFiles } from '../hooks/useFiles';
 import { markAsLearned } from '../services/reviewService';
+import { recordReadingHistory } from '../services/readingHistoryService';
 import MarkdownReader from '../components/reader/MarkdownReader';
 import ReaderToolbar from '../components/reader/ReaderToolbar';
 import NoteEditor from '../components/notes/NoteEditor';
@@ -24,6 +25,19 @@ export default function ReaderPage() {
 
   const file = fileId ? useFile(fileId) : null;
   const notes = fileId ? [] : [];
+
+  const startTimeRef = useRef<number>(Date.now());
+
+  // 组件卸载时记录阅读历史
+  useEffect(() => {
+    return () => {
+      if (file) {
+        const endTime = Date.now();
+        const readingDuration = Math.round((endTime - startTimeRef.current) / 1000); // 转换为秒
+        recordReadingHistory(file.id, readingDuration);
+      }
+    };
+  }, [file]);
 
   const parseMarkdownHeadings = (content: string): Array<{ level: number; text: string; id: string }> => {
     const headings: Array<{ level: number; text: string; id: string }> = [];
