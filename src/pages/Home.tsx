@@ -5,6 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTodayReviewTasks } from '../hooks/useReview';
 import { useFiles } from '../hooks/useFiles';
 import ReviewTaskCard from '../components/review/ReviewTaskCard';
+import RecentReading from '../components/reading-history/RecentReading';
 import { deleteFiles } from '../services/fileService';
 import { exportData, importData } from '../services/syncService';
 import './Home.css';
@@ -341,6 +342,8 @@ export default function Home() {
                   )}
                 />
               </Card>
+
+              <RecentReading />
             </>
           )}
         </div>
