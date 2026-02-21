@@ -1,20 +1,22 @@
 import Dexie, { Table } from 'dexie';
-import type { File, Note, ReviewRecord, UserSettings } from '../types';
+import type { File, Note, ReviewRecord, UserSettings, ReadingHistory } from '../types';
 
 class ReviewDatabase extends Dexie {
   files!: Table<File>;
   notes!: Table<Note>;
   reviewRecords!: Table<ReviewRecord>;
   settings!: Table<UserSettings>;
+  readingHistory!: Table<ReadingHistory>;
 
   constructor() {
     super('ReviewDatabase');
 
-    this.version(1).stores({
+    this.version(2).stores({
       files: 'id, path, name, nextReviewAt, lastReviewedAt',
       notes: 'id, fileId, createdAt',
       reviewRecords: 'id, fileId, reviewedAt',
-      settings: 'key'
+      settings: 'key',
+      readingHistory: 'id, fileId, readAt'
     });
   }
 }
