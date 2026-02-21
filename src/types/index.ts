@@ -64,3 +64,11 @@ export interface ReviewTask {
   reviewLevel: number;
   overdue: boolean;
 }
+
+export interface ReadingHistory {
+  id: string;
+  fileId: string;
+  readAt: number;  // 阅读时间戳
+  readingDuration?: number;  // 阅读时长（秒）
+  readingProgress?: number;  // 阅读进度（0-100）
+}
