@@ -16,6 +16,7 @@ export interface File {
   lastReviewedAt: number;
   nextReviewAt: number;
   readingProgress: number;
+  scrollPosition?: number;
 }
 
 export interface FileEntity {
@@ -30,6 +31,7 @@ export interface FileEntity {
   lastReviewedAt: number;
   nextReviewAt: number;
   readingProgress: number;
+  scrollPosition?: number;
 }
 
 export interface Note {

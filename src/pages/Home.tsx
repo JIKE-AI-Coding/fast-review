@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { Layout, Button, Card, List, message, Popconfirm, Space, Typography } from 'antd';
-import { FolderOpenOutlined, ThunderboltOutlined, DeleteOutlined, FolderOutlined, PlusOutlined, DownloadOutlined, UploadOutlined, BarChartOutlined } from '@ant-design/icons';
+import { FolderOpenOutlined, ThunderboltOutlined, DeleteOutlined, FolderOutlined, PlusOutlined, DownloadOutlined, UploadOutlined, BarChartOutlined, FileTextOutlined, ClockCircleOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import { useTodayReviewTasks } from '../hooks/useReview';
 import { useFiles } from '../hooks/useFiles';
@@ -200,10 +200,10 @@ export default function Home() {
     <Layout style={{ minHeight: '100vh' }}>
       <Content style={{ padding: '24px', background: '#f0f2f5' }}>
         <div className="home-container">
-          <Card className="welcome-card">
-            <h1>欢迎使用艾宾浩斯复习系统</h1>
-            <p>基于科学遗忘曲线的智能复习助手</p>
-            {!files || files.length === 0 ? (
+          {!files || files.length === 0 ? (
+            <Card className="welcome-card" style={{ textAlign: 'center', padding: '48px 24px' }}>
+              <h1 style={{ marginBottom: 16, fontSize: 32, color: '#1890ff' }}>欢迎使用艾宾浩斯复习系统</h1>
+              <p style={{ marginBottom: 32, fontSize: 16, color: '#666' }}>基于科学遗忘曲线的智能复习助手</p>
               <Space direction="vertical" size="middle">
                 <Button
                   type="primary"
@@ -230,54 +230,67 @@ export default function Home() {
                   onChange={handleImport}
                 />
               </Space>
-            ) : (
-              <Space>
-                <Text type="secondary">{files.length} 个文件</Text>
-                <Button
-                  type="link"
-                  icon={<BarChartOutlined />}
-                  onClick={() => navigate('/stats')}
-                  style={{ padding: 0 }}
-                >
-                  查看统计
-                </Button>
-              </Space>
-            )}
-          </Card>
-
-          {files && files.length > 0 && (
+            </Card>
+          ) : (
             <>
-              <Card
-                title="今日复习"
-                extra={
+              <div className="welcome-banner">
+                <div className="welcome-banner-text">
+                  Hi 👋 欢迎回来
+                </div>
+                <div className="welcome-banner-stats">
+                  <span><FileTextOutlined /> {files.length} 个文件</span>
+                  <span style={{ cursor: 'pointer' }} onClick={() => navigate('/stats')}>
+                    <BarChartOutlined /> 查看统计
+                  </span>
+                </div>
+              </div>
+
+              <Card className="review-hero-card">
+                <div className="review-hero-content">
+                  <div className="review-hero-info">
+                    <div className="review-hero-title">今天你要做什么？</div>
+                    <div className="review-hero-subtitle">
+                      {loadingTasks ? '加载中...' : tasks.length > 0 ? (
+                        <>有 <ClockCircleOutlined /> {tasks.length} 项内容等待复习</>
+                      ) : (
+                        '太棒了！今天没有需要复习的内容'
+                      )}
+                    </div>
+                  </div>
                   <Button
-                    type="primary"
+                    className="review-hero-btn"
+                    size="large"
                     icon={<ThunderboltOutlined />}
                     onClick={() => navigate('/review')}
                     disabled={tasks.length === 0}
                   >
-                    开始复习 ({tasks.length})
+                    开始复习
                   </Button>
-                }
-                style={{ marginTop: 24 }}
-              >
-                {loadingTasks ? (
-                  <div>加载中...</div>
-                ) : tasks.length > 0 ? (
-                  <List
-                    dataSource={tasks}
-                    renderItem={(task) => (
-                      <ReviewTaskCard
-                        task={task}
-                        onReview={() => navigate(`/review/${task.fileId}`)}
-                      />
+                </div>
+                {!loadingTasks && tasks.length > 0 && (
+                  <div className="review-tasks-preview">
+                    <List
+                      dataSource={tasks.slice(0, 3)}
+                      renderItem={(task) => (
+                        <ReviewTaskCard
+                          task={task}
+                          onReview={() => navigate(`/review/${task.fileId}`)}
+                        />
+                      )}
+                    />
+                    {tasks.length > 3 && (
+                      <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 12, marginTop: 8, display: 'block', textAlign: 'center' }}>
+                        还有 {tasks.length - 3} 项...
+                      </Text>
                     )}
-                  />
-                ) : (
-                  <div>今天没有需要复习的内容</div>
+                  </div>
                 )}
               </Card>
+            </>
+          )}
 
+          {files && files.length > 0 && (
+            <>
               <Card
                 title="我的文件"
                 extra={

@@ -3,6 +3,8 @@ import { Layout, Button, message, Layout as AntLayout, Tree, Typography } from '
 import { ArrowLeftOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useFile, useFiles } from '../hooks/useFiles';
+import { useNotes } from '../hooks/useNotes';
+import { useSettings } from '../hooks/useSettings';
 import { markAsLearned } from '../services/reviewService';
 import { recordReadingHistory } from '../services/readingHistoryService';
 import MarkdownReader from '../components/reader/MarkdownReader';
@@ -28,16 +30,18 @@ export default function ReaderPage() {
 
   const startTimeRef = useRef<number>(Date.now());
 
-  // 组件卸载时记录阅读历史
   useEffect(() => {
+    if (!fileId) return;
+    
+    recordReadingHistory(fileId).catch(err => console.error('阅读历史记录失败:', err));
+    startTimeRef.current = Date.now();
+    
     return () => {
-      if (file) {
-        const endTime = Date.now();
-        const readingDuration = Math.round((endTime - startTimeRef.current) / 1000); // 转换为秒
-        recordReadingHistory(file.id, readingDuration);
-      }
+      const endTime = Date.now();
+      const readingDuration = Math.round((endTime - startTimeRef.current) / 1000);
+      recordReadingHistory(fileId, readingDuration).catch(err => console.error('阅读时长记录失败:', err));
     };
-  }, [file]);
+  }, [fileId]);
 
   const parseMarkdownHeadings = (content: string): Array<{ level: number; text: string; id: string }> => {
     const headings: Array<{ level: number; text: string; id: string }> = [];

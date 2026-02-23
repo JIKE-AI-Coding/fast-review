@@ -1,8 +1,9 @@
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { Layout, Tree, Button, Empty, TreeProps, Select, Drawer } from 'antd';
-import { ArrowLeftOutlined, FileOutlined, FolderOutlined, SortAscendingOutlined, VerticalAlignTopOutlined, UnorderedListOutlined, OrderedListOutlined } from '@ant-design/icons';
-import { useParams, useNavigate } from 'react-router-dom';
+import { ArrowLeftOutlined, FileOutlined, FolderOutlined, SortAscendingOutlined, VerticalAlignTopOutlined, UnorderedListOutlined, OrderedListOutlined, HomeOutlined } from '@ant-design/icons';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useFiles } from '../hooks/useFiles';
+import { recordReadingHistory, updateFileReadingProgress, getFileReadingProgress } from '../services/readingHistoryService';
 import MarkdownReader from '../components/reader/MarkdownReader';
 import type { DataNode } from 'antd/es/tree';
 import type { Key } from 'react';
@@ -22,8 +23,11 @@ const MOBILE_BREAKPOINT = 768;
 export default function DirectoryBrowser() {
   const { dirPath } = useParams<{ dirPath: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { files } = useFiles();
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  
+  const initialFileId = searchParams.get('fileId');
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(initialFileId);
   const [expandedKeys, setExpandedKeys] = useState<Key[]>([]);
   const [sortBy, setSortBy] = useState<SortBy>('name');
   const [showBackTop, setShowBackTop] = useState(false);
@@ -31,6 +35,9 @@ export default function DirectoryBrowser() {
   const [rightDrawerVisible, setRightDrawerVisible] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const startTimeRef = useRef<number>(Date.now());
+  const saveProgressTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const currentProgressRef = useRef<{ fileId: string; progress: number; scrollPosition: number } | null>(null);
 
   const decodedDirPath = dirPath ? decodeURIComponent(dirPath) : '';
 
@@ -42,6 +49,13 @@ export default function DirectoryBrowser() {
     window.addEventListener('resize', checkMobile);
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
+
+  useEffect(() => {
+    const fileIdFromUrl = searchParams.get('fileId');
+    if (fileIdFromUrl && fileIdFromUrl !== selectedFileId) {
+      setSelectedFileId(fileIdFromUrl);
+    }
+  }, [searchParams, selectedFileId]);
 
   const directoryFiles = useMemo(() => {
     if (!files || !decodedDirPath) return [];
@@ -217,10 +231,41 @@ export default function DirectoryBrowser() {
     navigate('/');
   };
 
-  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+  const saveCurrentProgress = useCallback(async () => {
+    if (!currentProgressRef.current) return;
+    
+    const { fileId, progress, scrollPosition } = currentProgressRef.current;
+    try {
+      await updateFileReadingProgress(fileId, progress, scrollPosition);
+    } catch (err) {
+      console.error('[DirectoryBrowser] 保存进度失败:', err);
+    }
+  }, []);
+
+  const calculateProgress = useCallback((element: HTMLDivElement): { progress: number; scrollPosition: number } => {
+    const { scrollTop, scrollHeight, clientHeight } = element;
+    const maxScroll = scrollHeight - clientHeight;
+    const progress = maxScroll > 0 ? Math.round((scrollTop / maxScroll) * 100) : 0;
+    return { progress: Math.min(100, Math.max(0, progress)), scrollPosition: scrollTop };
+  }, []);
+
+  const handleScroll = useCallback((e: React.UIEvent<HTMLDivElement>) => {
     const target = e.currentTarget;
     setShowBackTop(target.scrollTop > 200);
-  };
+    
+    if (!selectedFileId) return;
+    
+    const { progress, scrollPosition } = calculateProgress(target);
+    currentProgressRef.current = { fileId: selectedFileId, progress, scrollPosition };
+    
+    if (saveProgressTimeoutRef.current) {
+      clearTimeout(saveProgressTimeoutRef.current);
+    }
+    
+    saveProgressTimeoutRef.current = setTimeout(() => {
+      saveCurrentProgress();
+    }, 500);
+  }, [selectedFileId, calculateProgress, saveCurrentProgress]);
 
   const handleBackTop = () => {
     if (contentRef.current) {
@@ -229,10 +274,62 @@ export default function DirectoryBrowser() {
   };
 
   useEffect(() => {
-    if (contentRef.current) {
-      contentRef.current.scrollTo({ top: 0 });
-      setShowBackTop(false);
+    console.log('[DirectoryBrowser] useEffect 触发, selectedFileId:', selectedFileId);
+    
+    if (!selectedFileId) {
+      console.log('[DirectoryBrowser] selectedFileId 为空，跳过');
+      return;
     }
+    
+    const loadProgressAndRestore = async () => {
+      const progressData = await getFileReadingProgress(selectedFileId);
+      console.log('[DirectoryBrowser] 进度数据:', progressData, 'contentRef:', contentRef.current);
+      
+      const doRestore = () => {
+        if (contentRef.current) {
+          setShowBackTop(false);
+          if (progressData?.scrollPosition && progressData.scrollPosition > 0) {
+            console.log('[DirectoryBrowser] 恢复滚动位置:', progressData.scrollPosition);
+            contentRef.current.scrollTo({ top: progressData.scrollPosition });
+          } else {
+            console.log('[DirectoryBrowser] 滚动到顶部');
+            contentRef.current.scrollTo({ top: 0 });
+          }
+        } else {
+          console.log('[DirectoryBrowser] contentRef 仍为空，重试');
+          setTimeout(doRestore, 100);
+        }
+      };
+      
+      setTimeout(doRestore, 100);
+    };
+    
+    loadProgressAndRestore();
+    
+    recordReadingHistory(selectedFileId)
+      .catch(err => console.error('[DirectoryBrowser] 阅读历史记录失败:', err));
+    
+    startTimeRef.current = Date.now();
+    currentProgressRef.current = null;
+    
+    return () => {
+      if (saveProgressTimeoutRef.current) {
+        clearTimeout(saveProgressTimeoutRef.current);
+      }
+      
+      if (currentProgressRef.current && currentProgressRef.current.fileId === selectedFileId) {
+        updateFileReadingProgress(
+          currentProgressRef.current.fileId,
+          currentProgressRef.current.progress,
+          currentProgressRef.current.scrollPosition
+        ).catch(err => console.error('[DirectoryBrowser] 保存进度失败:', err));
+      }
+      
+      const endTime = Date.now();
+      const readingDuration = Math.round((endTime - startTimeRef.current) / 1000);
+      recordReadingHistory(selectedFileId, readingDuration, currentProgressRef.current?.progress)
+        .catch(err => console.error('[DirectoryBrowser] 阅读时长记录失败:', err));
+    };
   }, [selectedFileId]);
 
   const headings = selectedFile?.content ? parseMarkdownHeadings(selectedFile.content) : [];
@@ -331,6 +428,9 @@ export default function DirectoryBrowser() {
           </div>
 
           <div style={{ position: 'fixed', bottom: 0, left: 0, right: 0, background: '#fff', borderTop: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-around', padding: '12px 0' }}>
+            <Button icon={<HomeOutlined />} onClick={handleBack}>
+              返回
+            </Button>
             <Button icon={<UnorderedListOutlined />} onClick={() => setLeftDrawerVisible(true)}>
               文件
             </Button>

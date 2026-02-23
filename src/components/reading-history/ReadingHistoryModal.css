@@ -1,0 +1,71 @@
+.reading-history-modal .ant-modal-body {
+  padding: 12px 24px;
+}
+
+.history-list-container {
+  max-height: inherit;
+  overflow-y: auto;
+}
+
+.history-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+
+.history-item:hover {
+  background-color: #f5f5f5;
+}
+
+.history-item .file-icon {
+  font-size: 18px;
+  color: #1890ff;
+}
+
+.history-item .ant-list-item-meta-title {
+  font-weight: 500;
+  margin-bottom: 4px;
+}
+
+.history-item .item-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.history-item .item-meta .ant-typography {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.loading-more {
+  text-align: center;
+  padding: 16px;
+}
+
+.no-more {
+  text-align: center;
+  padding: 16px;
+}
+
+@media (max-width: 768px) {
+  .reading-history-modal .ant-modal-body {
+    padding: 8px 16px;
+  }
+
+  .history-item {
+    padding: 10px 12px;
+  }
+
+  .history-item .ant-list-item-meta-title {
+    font-size: 14px;
+  }
+
+  .history-item .item-meta .ant-typography {
+    font-size: 11px;
+  }
+}
